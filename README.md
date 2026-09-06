@@ -21,7 +21,7 @@ version 23 declared in library [androidx.core:core:1.18.0]
 - **Project auto-detection**: Detects `minSdk` and dependencies from `libs.versions.toml`, `build.gradle.kts`, and `build.gradle`.
 - **Automatic locking (`--lock`)**: Updates `libs.versions.toml` or `build.gradle(.kts)` in-place preserving formatting and comments.
 - **Transitive resolution strategy (`--constraints`)**: Generates Gradle `resolutionStrategy` blocks for Groovy and Kotlin DSL to prevent transitive dependency pollution.
-- **Antigravity Skill included**: Built-in `.agents/skills/findminsdk/SKILL.md` for AI pair programming.
+- **AI Agent Skill included**: Built-in skill definition for coding agents and pair assistants.
 
 ---
 
@@ -156,8 +156,8 @@ options:
 
 ---
 
-## Antigravity Skill
+## AI Agent Skill
 
-This repository includes an Antigravity skill in `.agents/skills/findminsdk/SKILL.md`.
+This repository includes a skill definition in `.agents/skills/findminsdk/SKILL.md` (and `skills/findminsdk/SKILL.md`).
 
-When using Antigravity in your Android projects, the assistant can activate this skill whenever `minSdk` or manifest merger issues occur.
+Compatible with Claude, Codex, Cursor, and other agent frameworks. Coding assistants can invoke `findminsdk` whenever `minSdk` or manifest merger issues occur.
