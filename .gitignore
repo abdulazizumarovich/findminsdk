@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.cache/
+.findminsdk_cache.json
+*.egg-info/
+dist/
+build/
+.idea/
+.vscode/
