@@ -573,6 +573,72 @@ class ProjectScanner:
                     )
 
 
+ALIGNED_FAMILY_PREFIXES = (
+    "io.grpc",
+    "androidx.room",
+    "androidx.navigation",
+    "androidx.camera",
+    "androidx.compose",
+    "com.squareup.retrofit2",
+    "com.squareup.okhttp3",
+)
+
+
+def reconcile_families(results: List[AnalysisResult], target_min_sdk: int) -> List[AnalysisResult]:
+    # 1. Reconcile by shared version_ref in libs.versions.toml
+    vref_map: Dict[Tuple[str, str], List[AnalysisResult]] = {}
+    for r in results:
+        if r.target.version_ref and r.target.file_path:
+            vref_map.setdefault((str(r.target.file_path), r.target.version_ref), []).append(r)
+
+    for (fpath, vref), group_items in vref_map.items():
+        locked_items = [r for r in group_items if r.is_locked and r.max_compatible_version is not None]
+        if locked_items:
+            min_locked_item = min(locked_items, key=lambda x: parse_semver(x.max_compatible_version))
+            ceiling = min_locked_item.max_compatible_version
+            ceiling_sem = parse_semver(ceiling)
+
+            for r in group_items:
+                r_max_sem = parse_semver(r.max_compatible_version) if r.max_compatible_version else None
+                if r_max_sem is None or r_max_sem > ceiling_sem:
+                    r.max_compatible_version = ceiling
+                    r.is_locked = True
+                    r.status = "LOCKED" if r.current_version == ceiling else "NEEDS_PIN"
+                    r.message = f"Aligned with {min_locked_item.target.artifact} (version.ref '{vref}') for minSdk {target_min_sdk}"
+                elif r.max_compatible_version == ceiling:
+                    r.is_locked = True
+                    r.status = "LOCKED" if r.current_version == ceiling else "NEEDS_PIN"
+
+    # 2. Reconcile by Maven group / family prefixes (e.g. io.grpc)
+    family_map: Dict[str, List[AnalysisResult]] = {}
+    for r in results:
+        fam = None
+        for pfx in ALIGNED_FAMILY_PREFIXES:
+            if r.target.group.startswith(pfx):
+                fam = pfx
+                break
+        if not fam:
+            fam = r.target.group
+        family_map.setdefault(fam, []).append(r)
+
+    for fam, group_items in family_map.items():
+        locked_items = [r for r in group_items if r.is_locked and r.max_compatible_version is not None]
+        if locked_items:
+            min_locked_item = min(locked_items, key=lambda x: parse_semver(x.max_compatible_version))
+            ceiling = min_locked_item.max_compatible_version
+            ceiling_sem = parse_semver(ceiling)
+
+            for r in group_items:
+                r_max_sem = parse_semver(r.max_compatible_version) if r.max_compatible_version else None
+                if r_max_sem is not None and r_max_sem > ceiling_sem:
+                    r.max_compatible_version = ceiling
+                    r.is_locked = True
+                    r.status = "LOCKED" if r.current_version == ceiling else "NEEDS_PIN"
+                    r.message = f"Aligned with {min_locked_item.target.artifact} in {fam} family for minSdk {target_min_sdk}"
+
+    return results
+
+
 class ConstraintGenerator:
 
     @staticmethod
@@ -808,6 +874,7 @@ def main():
 
     cache.save()
 
+    results = reconcile_families(results, target_min_sdk)
     results.sort(key=lambda r: f"{r.target.group}:{r.target.artifact}")
 
     if args.json:

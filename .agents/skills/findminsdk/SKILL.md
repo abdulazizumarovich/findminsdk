@@ -62,7 +62,7 @@ As an AI coding assistant, apply the edits contextually across the modular proje
 3. **Transitive Dependencies**:
    If a transitive library triggers manifest merger errors, add a `resolutionStrategy` to the root `build.gradle(.kts)`.
 4. **Pure Java JAR Dependencies**:
-   Libraries with `is_jar_only: true` declare no Android manifest `minSdkVersion`. They are never locked. When `status` is `UPGRADE_AVAILABLE`, upgrade them cleanly without inspection comments.
+   Libraries with `is_jar_only: true` declare no Android manifest `minSdkVersion`. Independent JARs are never locked. Sibling JARs sharing a family or `version_ref` with a locked AAR (such as `io.grpc`) inherit the ceiling and have `requires_noinspection: true`.
 
 ### 4. Transitive Constraint Snippets
 

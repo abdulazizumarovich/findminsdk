@@ -36,7 +36,8 @@ Use when:
 
 ## Definition of "Locked" and Comments
 
-- A dependency is "locked" ONLY when newer versions exist but cannot be upgraded because their minSdk exceeds your target.
-- JAR dependencies (`is_jar_only: true`) are NEVER locked and NEVER receive `#noinspection`.
-- AAR dependencies with `requires_noinspection: false` are NOT locked and NEVER receive `#noinspection`.
-- When `status` is `UPGRADE_AVAILABLE`, upgrade them cleanly without adding any comment.
+- A dependency is "locked" ONLY when newer versions exist but cannot be upgraded because minSdk restricts it (directly or via a shared version.ref/family like io.grpc).
+- Independent JAR dependencies are never locked.
+- Sibling JARs sharing a family or version.ref with a locked AAR inherit the ceiling and receive `requires_noinspection: true`.
+- Always trust `requires_noinspection`: add suppression ONLY when `requires_noinspection` is true.
+- When `status` is `UPGRADE_AVAILABLE` and `requires_noinspection` is false, upgrade cleanly without comments.

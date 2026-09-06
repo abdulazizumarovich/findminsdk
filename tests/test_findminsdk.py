@@ -17,6 +17,7 @@ from findminsdk import (
     ProjectScanner,
     is_prerelease,
     parse_semver,
+    reconcile_families,
 )
 
 
@@ -205,6 +206,79 @@ class TestJarHandling(unittest.TestCase):
         self.assertFalse(res.is_jar_only)
         self.assertTrue(res.is_locked)
         self.assertEqual(res.status, "LOCKED")
+
+
+class TestFamilyReconciliation(unittest.TestCase):
+    def test_reconcile_by_family_prefix(self):
+        t1 = DependencyTarget(group="io.grpc", artifact="grpc-android", current_version="1.37.0")
+        r1 = AnalysisResult(
+            target=t1,
+            target_min_sdk=21,
+            current_version="1.37.0",
+            current_min_sdk=16,
+            latest_overall_version="1.84.0",
+            latest_overall_min_sdk=24,
+            max_compatible_version="1.75.0",
+            max_compatible_min_sdk=21,
+            is_jar_only=False,
+            is_locked=True,
+            status="NEEDS_PIN",
+        )
+        t2 = DependencyTarget(group="io.grpc", artifact="grpc-okhttp", current_version="1.37.0")
+        r2 = AnalysisResult(
+            target=t2,
+            target_min_sdk=21,
+            current_version="1.37.0",
+            current_min_sdk=None,
+            latest_overall_version="1.84.0",
+            latest_overall_min_sdk=None,
+            max_compatible_version="1.84.0",
+            max_compatible_min_sdk=None,
+            is_jar_only=True,
+            is_locked=False,
+            status="UPGRADE_AVAILABLE",
+        )
+        reconciled = reconcile_families([r1, r2], 21)
+        r2_rec = next(r for r in reconciled if r.target.artifact == "grpc-okhttp")
+        self.assertEqual(r2_rec.max_compatible_version, "1.75.0")
+        self.assertTrue(r2_rec.is_locked)
+        self.assertEqual(r2_rec.status, "NEEDS_PIN")
+
+    def test_reconcile_by_shared_version_ref(self):
+        p = Path("/mock/libs.versions.toml")
+        t1 = DependencyTarget(group="com.example", artifact="lib-aar", current_version="1.0.0", version_ref="sharedLib", file_path=p)
+        r1 = AnalysisResult(
+            target=t1,
+            target_min_sdk=21,
+            current_version="1.0.0",
+            current_min_sdk=21,
+            latest_overall_version="2.0.0",
+            latest_overall_min_sdk=23,
+            max_compatible_version="1.5.0",
+            max_compatible_min_sdk=21,
+            is_jar_only=False,
+            is_locked=True,
+            status="NEEDS_PIN",
+        )
+        t2 = DependencyTarget(group="com.example", artifact="lib-jar", current_version="1.0.0", version_ref="sharedLib", file_path=p)
+        r2 = AnalysisResult(
+            target=t2,
+            target_min_sdk=21,
+            current_version="1.0.0",
+            current_min_sdk=None,
+            latest_overall_version="2.0.0",
+            latest_overall_min_sdk=None,
+            max_compatible_version="2.0.0",
+            max_compatible_min_sdk=None,
+            is_jar_only=True,
+            is_locked=False,
+            status="UPGRADE_AVAILABLE",
+        )
+        reconciled = reconcile_families([r1, r2], 21)
+        r2_rec = next(r for r in reconciled if r.target.artifact == "lib-jar")
+        self.assertEqual(r2_rec.max_compatible_version, "1.5.0")
+        self.assertTrue(r2_rec.is_locked)
+        self.assertEqual(r2_rec.status, "NEEDS_PIN")
 
 
 if __name__ == "__main__":
