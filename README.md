@@ -178,6 +178,6 @@ options:
 
 ## AI Agent Skill
 
-This repository includes a skill definition in `.agents/skills/findminsdk/SKILL.md` (and `skills/findminsdk/SKILL.md`).
+This repository includes a skill definition in `.agents/skills/findminsdk/SKILL.md`.
 
 Compatible with Claude, Codex, Cursor, and other agent frameworks. Coding assistants can invoke `findminsdk` whenever `minSdk` or manifest merger issues occur.
