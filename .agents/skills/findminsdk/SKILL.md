@@ -54,11 +54,11 @@ As an AI coding assistant, apply the edits contextually across the modular proje
 
 1. **Version Catalogs (`gradle/libs.versions.toml`)**:
    Update the key referenced by `version_ref` under `[versions]` to `max_compatible_version`.
-   Add `#noinspection GradleDependency` ONLY if `requires_noinspection` is true (the library is locked by minSdk).
+   Add `#noinspection NewerVersionAvailable, GradleDependency` ONLY if `requires_noinspection` is true (the library is locked by minSdk).
    NEVER add `#noinspection` to JARs or unlocked dependencies.
 2. **Module Build Scripts (`**/build.gradle(.kts)`)**:
    For direct dependencies in submodules or convention plugins, update the version string in-place.
-   Add `//noinspection GradleDependency` ONLY if `requires_noinspection` is true.
+   Add `//noinspection NewerVersionAvailable, GradleDependency` ONLY if `requires_noinspection` is true.
 3. **Transitive Dependencies**:
    If a transitive library triggers manifest merger errors, add a `resolutionStrategy` to the root `build.gradle(.kts)`.
 4. **Pure Java JAR Dependencies**:

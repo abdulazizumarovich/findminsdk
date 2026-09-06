@@ -28,10 +28,10 @@ Use when:
 2. Inspect the JSON array. Each target includes `file_path`, `line_number`, and `version_ref`.
 3. Edit the identified files:
    - For `libs.versions.toml`: update the alias key in `[versions]`.
-     Add `#noinspection GradleDependency` ONLY if `requires_noinspection` is true (the library cannot upgrade due to minSdk).
+     Add `#noinspection NewerVersionAvailable, GradleDependency` ONLY if `requires_noinspection` is true (the library cannot upgrade due to minSdk).
      NEVER add `#noinspection` to JARs or libraries where `requires_noinspection` is false.
    - For module `build.gradle(.kts)` or convention plugins: update inline versions.
-     Add `//noinspection GradleDependency` ONLY if `requires_noinspection` is true.
+     Add `//noinspection NewerVersionAvailable, GradleDependency` ONLY if `requires_noinspection` is true.
    - For transitive conflicts: add the `resolutionStrategy` block to the root build file.
 
 ## Definition of "Locked" and Comments
