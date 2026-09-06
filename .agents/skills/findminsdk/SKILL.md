@@ -54,8 +54,10 @@ As an AI coding assistant, apply the edits contextually across the modular proje
 
 1. **Version Catalogs (`gradle/libs.versions.toml`)**:
    Update the key referenced by `version_ref` under `[versions]` to `max_compatible_version`.
+   Add `#noinspection GradleDependency` on the preceding line to suppress IDE upgrade warnings.
 2. **Module Build Scripts (`**/build.gradle(.kts)`)**:
    For direct dependencies in submodules or convention plugins, update the version string in-place.
+   Add `//noinspection GradleDependency` above the dependency line.
 3. **Transitive Dependencies**:
    If a transitive library triggers manifest merger errors, add a `resolutionStrategy` to the root `build.gradle(.kts)`.
 

@@ -28,5 +28,7 @@ Use when:
 2. Inspect the JSON array. Each target includes `file_path`, `line_number`, and `version_ref`.
 3. Edit the identified files:
    - For `libs.versions.toml`: update the alias key in `[versions]`.
+     Add `#noinspection GradleDependency` above the key to silence IDE warnings.
    - For module `build.gradle(.kts)` or convention plugins: update inline versions.
+     Add `//noinspection GradleDependency` above the dependency line.
    - For transitive conflicts: add the `resolutionStrategy` block to the root build file.
