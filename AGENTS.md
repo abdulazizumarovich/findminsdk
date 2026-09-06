@@ -28,13 +28,15 @@ Use when:
 2. Inspect the JSON array. Each target includes `file_path`, `line_number`, and `version_ref`.
 3. Edit the identified files:
    - For `libs.versions.toml`: update the alias key in `[versions]`.
-     Add `#noinspection GradleDependency` above the key to silence IDE warnings.
+     Add `#noinspection GradleDependency` ONLY if `requires_noinspection` is true (the library cannot upgrade due to minSdk).
+     NEVER add `#noinspection` to JARs or libraries where `requires_noinspection` is false.
    - For module `build.gradle(.kts)` or convention plugins: update inline versions.
-     Add `//noinspection GradleDependency` above the dependency line.
+     Add `//noinspection GradleDependency` ONLY if `requires_noinspection` is true.
    - For transitive conflicts: add the `resolutionStrategy` block to the root build file.
 
-## Handling JAR Dependencies
+## Definition of "Locked" and Comments
 
-- Dependencies with `is_jar_only: true` (e.g. Gson, Jackson, Retrofit, OkHttp) have no Android manifest.
-- They have no `minSdkVersion` restrictions in Gradle manifest merger.
-- When `status` is `UPGRADE_AVAILABLE`, upgrade them safely to `max_compatible_version`.
+- A dependency is "locked" ONLY when newer versions exist but cannot be upgraded because their minSdk exceeds your target.
+- JAR dependencies (`is_jar_only: true`) are NEVER locked and NEVER receive `#noinspection`.
+- AAR dependencies with `requires_noinspection: false` are NOT locked and NEVER receive `#noinspection`.
+- When `status` is `UPGRADE_AVAILABLE`, upgrade them cleanly without adding any comment.

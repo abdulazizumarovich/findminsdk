@@ -57,9 +57,10 @@ class AnalysisResult:
     latest_overall_min_sdk: Optional[int]
     max_compatible_version: Optional[str]
     max_compatible_min_sdk: Optional[int]
-    is_jar_only: bool
-    status: str
-    message: str
+    is_jar_only: bool = False
+    is_locked: bool = False
+    status: str = "OK"
+    message: str = ""
 
 
 class DiskCache:
@@ -403,6 +404,7 @@ class MinSdkAnalyzer:
             status = "NEEDS_PIN"
             msg = f"Pin to {max_compatible_ver} to prevent minSdk {latest_min_sdk} collision"
 
+        is_locked = status in ("LOCKED", "NEEDS_PIN")
         return AnalysisResult(
             target=target,
             target_min_sdk=target_min_sdk,
@@ -413,6 +415,7 @@ class MinSdkAnalyzer:
             max_compatible_version=max_compatible_ver,
             max_compatible_min_sdk=max_compatible_sdk,
             is_jar_only=False,
+            is_locked=is_locked,
             status=status,
             message=msg,
         )
@@ -819,6 +822,8 @@ def main():
                     "file_path": str(r.target.file_path) if r.target.file_path else None,
                     "line_number": r.target.line_number,
                     "is_jar_only": r.is_jar_only,
+                    "is_locked": r.is_locked,
+                    "requires_noinspection": r.is_locked,
                     "status": r.status,
                     "message": r.message,
                 }

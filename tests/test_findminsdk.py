@@ -182,6 +182,7 @@ class TestJarHandling(unittest.TestCase):
         analyzer = MinSdkAnalyzer(client=client)
         res = analyzer.analyze(target, 21)
         self.assertTrue(res.is_jar_only)
+        self.assertFalse(res.is_locked)
         self.assertEqual(res.status, "UPGRADE_AVAILABLE")
         self.assertEqual(res.max_compatible_version, res.latest_overall_version)
         self.assertIn("safe to upgrade", res.message)
@@ -192,7 +193,17 @@ class TestJarHandling(unittest.TestCase):
         analyzer = MinSdkAnalyzer(client=client)
         res = analyzer.analyze(target, 21)
         self.assertTrue(res.is_jar_only)
+        self.assertFalse(res.is_locked)
         self.assertEqual(res.status, "OK")
+
+    def test_aar_locked_requires_noinspection(self):
+        target = DependencyTarget(group="androidx.core", artifact="core", current_version="1.17.0")
+        client = MavenClient()
+        analyzer = MinSdkAnalyzer(client=client)
+        res = analyzer.analyze(target, 21)
+        self.assertFalse(res.is_jar_only)
+        self.assertTrue(res.is_locked)
+        self.assertEqual(res.status, "LOCKED")
 
 
 if __name__ == "__main__":
