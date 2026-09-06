@@ -175,5 +175,25 @@ class TestDiskCache(unittest.TestCase):
             self.assertIsNone(c2.get("androidx.core", "core", "1.17.0"))
 
 
+class TestJarHandling(unittest.TestCase):
+    def test_jar_upgrade_available(self):
+        target = DependencyTarget(group="com.google.code.gson", artifact="gson", current_version="2.9.1")
+        client = MavenClient()
+        analyzer = MinSdkAnalyzer(client=client)
+        res = analyzer.analyze(target, 21)
+        self.assertTrue(res.is_jar_only)
+        self.assertEqual(res.status, "UPGRADE_AVAILABLE")
+        self.assertEqual(res.max_compatible_version, res.latest_overall_version)
+        self.assertIn("safe to upgrade", res.message)
+
+    def test_jar_already_latest(self):
+        target = DependencyTarget(group="com.google.code.gson", artifact="gson", current_version="2.14.0")
+        client = MavenClient()
+        analyzer = MinSdkAnalyzer(client=client)
+        res = analyzer.analyze(target, 21)
+        self.assertTrue(res.is_jar_only)
+        self.assertEqual(res.status, "OK")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -347,6 +347,12 @@ class MinSdkAnalyzer:
             current_min_sdk = curr_sdk
 
         if not latest_is_aar:
+            status = "UPGRADE_AVAILABLE" if target.current_version and target.current_version != latest_ver else "OK"
+            msg = (
+                f"Pure Java JAR: safe to upgrade to {latest_ver} (no minSdk restriction)"
+                if status == "UPGRADE_AVAILABLE"
+                else "Pure Java JAR at latest version (no minSdk restriction)"
+            )
             return AnalysisResult(
                 target=target,
                 target_min_sdk=target_min_sdk,
@@ -357,8 +363,8 @@ class MinSdkAnalyzer:
                 max_compatible_version=latest_ver,
                 max_compatible_min_sdk=None,
                 is_jar_only=True,
-                status="JAR_ONLY",
-                message="Pure Java JAR (no AndroidManifest minSdk restriction)",
+                status=status,
+                message=msg,
             )
 
         if latest_min_sdk is not None and latest_min_sdk <= target_min_sdk:

@@ -60,6 +60,8 @@ As an AI coding assistant, apply the edits contextually across the modular proje
    Add `//noinspection GradleDependency` above the dependency line.
 3. **Transitive Dependencies**:
    If a transitive library triggers manifest merger errors, add a `resolutionStrategy` to the root `build.gradle(.kts)`.
+4. **Pure Java JAR Dependencies**:
+   Libraries with `is_jar_only: true` declare no Android manifest `minSdkVersion`. When `status` is `UPGRADE_AVAILABLE`, upgrade them safely to `max_compatible_version`.
 
 ### 4. Transitive Constraint Snippets
 

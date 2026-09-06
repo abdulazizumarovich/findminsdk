@@ -32,3 +32,9 @@ Use when:
    - For module `build.gradle(.kts)` or convention plugins: update inline versions.
      Add `//noinspection GradleDependency` above the dependency line.
    - For transitive conflicts: add the `resolutionStrategy` block to the root build file.
+
+## Handling JAR Dependencies
+
+- Dependencies with `is_jar_only: true` (e.g. Gson, Jackson, Retrofit, OkHttp) have no Android manifest.
+- They have no `minSdkVersion` restrictions in Gradle manifest merger.
+- When `status` is `UPGRADE_AVAILABLE`, upgrade them safely to `max_compatible_version`.
