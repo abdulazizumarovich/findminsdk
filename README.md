@@ -1,6 +1,6 @@
 # findminsdk
 
-> Fast, cross-platform Android dependency analyzer and version locker for `minSdk`.
+> Fast, cross-platform Android dependency analyzer for `minSdk` compatibility.
 
 Google recently raised `minSdkVersion` to 23 across AndroidX and Google Play services. If you develop for devices locked to **API 21** (like Android POS terminals, embedded smart kiosks, or legacy enterprise hardware), upgrading libraries triggers Gradle manifest merger errors:
 
@@ -9,7 +9,9 @@ Manifest merger failed : uses-sdk:minSdkVersion 21 cannot be smaller than
 version 23 declared in library [androidx.core:core:1.18.0]
 ```
 
-`findminsdk` inspects Maven repositories directly, extracts the true `minSdkVersion` from AAR manifests via HTTP Range requests without downloading full archives, finds the exact highest compatible version for your target `minSdk`, and locks your project files automatically.
+`findminsdk` inspects Maven repositories directly, extracts the true `minSdkVersion` from AAR manifests via HTTP Range requests without downloading full archives, and finds the exact highest compatible version for your target `minSdk`.
+
+In complex multi-module projects, file editing is delegated to AI coding assistants (Claude, Codex, Cursor, etc.) using structured `--json` output, avoiding brittle script modifications.
 
 ---
 
@@ -19,7 +21,7 @@ version 23 declared in library [androidx.core:core:1.18.0]
 - **Ultra-fast HTTP Range inspection**: Reads AAR zip manifests in single partial requests (milliseconds per library).
 - **Persistent local cache**: Subsequent scans run in sub-second time.
 - **Project auto-detection**: Detects `minSdk` and dependencies from `libs.versions.toml`, `build.gradle.kts`, and `build.gradle`.
-- **Automatic locking (`--lock`)**: Updates `libs.versions.toml` or `build.gradle(.kts)` in-place preserving formatting and comments.
+- **Modular project friendly**: Emits file paths, line numbers, and version catalog references in JSON for AI assistants.
 - **Transitive resolution strategy (`--constraints`)**: Generates Gradle `resolutionStrategy` blocks for Groovy and Kotlin DSL to prevent transitive dependency pollution.
 - **AI Agent Skill included**: Built-in skill definition for coding agents and pair assistants.
 
@@ -53,17 +55,36 @@ python3 /path/to/findminsdk.py
 
 `findminsdk` will:
 1. Auto-detect `minSdk` (e.g., `minSdk = 21` in your Gradle files).
-2. Scan direct dependencies from `gradle/libs.versions.toml` and `build.gradle(.kts)`.
+2. Scan direct dependencies from `gradle/libs.versions.toml` and module `build.gradle(.kts)`.
 3. Check all libraries against Google Maven and Maven Central concurrently.
 4. Output a summary table with status for each dependency.
 
-### 3. Automatically Lock Incompatible Dependencies
+### 3. Structured JSON for AI Agents
 
 ```bash
-python3 /path/to/findminsdk.py --lock
+python3 /path/to/findminsdk.py --json
 ```
 
-This rewrites your `libs.versions.toml` or `build.gradle(.kts)` so direct dependencies are pinned to the maximum compatible version.
+Output provides file locations and version references across modular subprojects:
+
+```json
+{
+  "target_min_sdk": 21,
+  "dependencies": [
+    {
+      "group": "androidx.core",
+      "artifact": "core-ktx",
+      "current_version": "1.19.0",
+      "latest_overall_version": "1.19.0",
+      "max_compatible_version": "1.17.0",
+      "version_ref": "coreKtx",
+      "file_path": "/path/to/project/gradle/libs.versions.toml",
+      "line_number": 9,
+      "status": "NEEDS_PIN"
+    }
+  ]
+}
+```
 
 ### 4. Transitive Dependency Constraints
 
@@ -106,7 +127,7 @@ allprojects {
 ## Command-Line Options
 
 ```text
-usage: findminsdk.py [-h] [-m MIN_SDK] [--lock] [--constraints]
+usage: findminsdk.py [-h] [-m MIN_SDK] [--constraints]
                      [--pre-release] [--repo CUSTOM_REPOS]
                      [--no-cache] [--clear-cache] [--json]
                      [targets ...]
@@ -116,7 +137,6 @@ positional arguments:
 
 options:
   -m, --min-sdk MIN_SDK Target minSdk (e.g. 21). Auto-detected if omitted.
-  --lock, --fix         Pin versions in libs.versions.toml or build.gradle.
   --constraints         Generate Gradle resolutionStrategy constraint code.
   --pre-release         Include alpha/beta/rc releases in search.
   --repo CUSTOM_REPOS   Add custom Maven repository URL.
@@ -149,8 +169,8 @@ options:
            |                                              | (e.g. 1.17.0 = 21)   |
            v                                              +----------------------+
 +-----------------------+                                            |
-| Update project files  | <------------------------------------------+
-| or emit constraints   |
+| Emit structured JSON  | <------------------------------------------+
+| or table for AI agent |
 +-----------------------+
 ```
 

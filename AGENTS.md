@@ -1,6 +1,8 @@
 # AI Agent Guide: findminsdk
 
-This project provides `findminsdk.py`, a cross-platform tool to analyze Android dependencies for `minSdk` compatibility and automatically lock Gradle scripts.
+This project provides `findminsdk.py`, a cross-platform tool to analyze Android dependencies for `minSdk` compatibility.
+
+The script focuses on analysis and structured recommendations. As an AI agent, you inspect the output and update project files directly, which is safer for modular architectures and custom Gradle conventions.
 
 ## When to Run
 
@@ -11,13 +13,20 @@ Use when:
 
 ## Commands
 
-- Audit single dependency:
-  `python3 findminsdk.py <group:artifact> -m <minSdk>`
-- Audit project directory:
+- Output structured JSON with file locations and version refs:
+  `python3 findminsdk.py <path_to_project> -m <minSdk> --json`
+- Display human-readable audit table:
   `python3 findminsdk.py <path_to_project> -m <minSdk>`
-- Automatically lock versions in project files:
-  `python3 findminsdk.py <path_to_project> -m <minSdk> --lock`
 - Generate transitive dependency resolutionStrategy block:
   `python3 findminsdk.py <path_to_project> -m <minSdk> --constraints`
-- Output structured JSON:
-  `python3 findminsdk.py <path_to_project> -m <minSdk> --json`
+- Audit single dependency:
+  `python3 findminsdk.py <group:artifact> -m <minSdk>`
+
+## Agent Workflow for Modular Projects
+
+1. Run `python3 findminsdk.py <project_path> -m <minSdk> --json`.
+2. Inspect the JSON array. Each target includes `file_path`, `line_number`, and `version_ref`.
+3. Edit the identified files:
+   - For `libs.versions.toml`: update the alias key in `[versions]`.
+   - For module `build.gradle(.kts)` or convention plugins: update inline versions.
+   - For transitive conflicts: add the `resolutionStrategy` block to the root build file.

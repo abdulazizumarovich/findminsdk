@@ -9,11 +9,11 @@ from pathlib import Path
 
 from findminsdk import (
     AnalysisResult,
+    ConstraintGenerator,
     DependencyTarget,
     DiskCache,
     MavenClient,
     MinSdkAnalyzer,
-    ProjectLocker,
     ProjectScanner,
     is_prerelease,
     parse_semver,
@@ -39,7 +39,6 @@ class TestSemver(unittest.TestCase):
 
 class TestManifestExtraction(unittest.TestCase):
     def test_scan_chunk_for_manifest(self):
-        # Create a mock AAR with AndroidManifest.xml
         manifest_xml = b'<?xml version="1.0"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"><uses-sdk android:minSdkVersion="21"/></manifest>'
         bio = io.BytesIO()
         with zipfile.ZipFile(bio, "w", zipfile.ZIP_DEFLATED) as z:
@@ -53,7 +52,7 @@ class TestManifestExtraction(unittest.TestCase):
         self.assertEqual(sdk, 21)
 
 
-class TestProjectScannerAndLocker(unittest.TestCase):
+class TestProjectScannerAndConstraints(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.root = Path(self.temp_dir.name)
@@ -88,7 +87,7 @@ android {
         scanner = ProjectScanner(self.root)
         self.assertEqual(scanner.detect_project_min_sdk(), 21)
 
-    def test_scan_and_lock_toml(self):
+    def test_scan_toml_metadata(self):
         gradle_dir = self.root / "gradle"
         gradle_dir.mkdir(parents=True)
         toml_file = gradle_dir / "libs.versions.toml"
@@ -109,74 +108,33 @@ inline-dep = { group = "androidx.activity", name = "activity", version = "1.13.0
         self.assertIn("androidx.core:core", dep_map)
         self.assertEqual(dep_map["androidx.core:core"].current_version, "1.19.0")
         self.assertEqual(dep_map["androidx.core:core"].version_ref, "core")
+        self.assertEqual(dep_map["androidx.core:core"].file_path, toml_file)
 
-        # Test Locking with version.ref
-        res = AnalysisResult(
-            target=dep_map["androidx.core:core"],
-            target_min_sdk=21,
-            current_version="1.19.0",
-            current_min_sdk=23,
-            latest_overall_version="1.19.0",
-            latest_overall_min_sdk=23,
-            max_compatible_version="1.17.0",
-            max_compatible_min_sdk=21,
-            is_jar_only=False,
-            status="NEEDS_PIN",
-            message="Pin to 1.17.0",
-        )
-        ok = ProjectLocker.lock_dependency(res)
-        self.assertTrue(ok)
+        self.assertIn("androidx.activity:activity", dep_map)
+        self.assertEqual(dep_map["androidx.activity:activity"].current_version, "1.13.0")
+        self.assertIsNone(dep_map["androidx.activity:activity"].version_ref)
 
-        # Test Locking inline version
-        res_inline = AnalysisResult(
-            target=dep_map["androidx.activity:activity"],
-            target_min_sdk=21,
-            current_version="1.13.0",
-            current_min_sdk=23,
-            latest_overall_version="1.13.0",
-            latest_overall_min_sdk=23,
-            max_compatible_version="1.11.0",
-            max_compatible_min_sdk=21,
-            is_jar_only=False,
-            status="NEEDS_PIN",
-            message="Pin to 1.11.0",
-        )
-        ok2 = ProjectLocker.lock_dependency(res_inline)
-        self.assertTrue(ok2)
-
-        content = toml_file.read_text()
-        self.assertIn('core = "1.17.0"', content)
-        self.assertIn('version = "1.11.0"', content)
-
-    def test_scan_and_lock_gradle(self):
-        build_file = self.root / "app" / "build.gradle.kts"
-        build_file.parent.mkdir(parents=True)
-        build_file.write_text("""dependencies {
+    def test_scan_multimodule_gradle(self):
+        # Submodule 1: :app
+        app_file = self.root / "app" / "build.gradle.kts"
+        app_file.parent.mkdir(parents=True)
+        app_file.write_text("""dependencies {
     implementation("androidx.core:core:1.19.0")
+}
+""")
+        # Submodule 2: :feature:login
+        feature_file = self.root / "feature" / "login" / "build.gradle.kts"
+        feature_file.parent.mkdir(parents=True)
+        feature_file.write_text("""dependencies {
+    implementation("androidx.appcompat:appcompat:1.8.0")
 }
 """)
         scanner = ProjectScanner(self.root)
         deps = scanner.scan_dependencies()
-        self.assertEqual(len(deps), 1)
-
-        res = AnalysisResult(
-            target=deps[0],
-            target_min_sdk=21,
-            current_version="1.19.0",
-            current_min_sdk=23,
-            latest_overall_version="1.19.0",
-            latest_overall_min_sdk=23,
-            max_compatible_version="1.17.0",
-            max_compatible_min_sdk=21,
-            is_jar_only=False,
-            status="NEEDS_PIN",
-            message="Pin to 1.17.0",
-        )
-        ok = ProjectLocker.lock_dependency(res)
-        self.assertTrue(ok)
-
-        content = build_file.read_text()
-        self.assertIn('implementation("androidx.core:core:1.17.0")', content)
+        self.assertEqual(len(deps), 2)
+        dep_names = {f"{d.group}:{d.artifact}" for d in deps}
+        self.assertIn("androidx.core:core", dep_names)
+        self.assertIn("androidx.appcompat:appcompat", dep_names)
 
     def test_resolution_strategy_generation(self):
         target = DependencyTarget(group="androidx.core", artifact="core")
@@ -193,7 +151,7 @@ inline-dep = { group = "androidx.activity", name = "activity", version = "1.13.0
             status="NEEDS_PIN",
             message="Pin to 1.17.0",
         )
-        groovy, kotlin = ProjectLocker.generate_resolution_strategy([res], 21)
+        groovy, kotlin = ConstraintGenerator.generate_resolution_strategy([res], 21)
         self.assertIn("details.requested.group == 'androidx.core'", groovy)
         self.assertIn("details.useVersion '1.17.0'", groovy)
         self.assertIn('requested.group == "androidx.core"', kotlin)

@@ -564,54 +564,7 @@ class ProjectScanner:
                     )
 
 
-class ProjectLocker:
-    @staticmethod
-    def lock_dependency(result: AnalysisResult) -> bool:
-        if not result.max_compatible_version:
-            return False
-
-        target = result.target
-        if not target.file_path or not target.file_path.exists():
-            return False
-
-        new_ver = result.max_compatible_version
-        content = target.file_path.read_text(encoding="utf-8")
-
-        if target.file_path.name.endswith(".toml"):
-            if target.version_ref:
-                pat = re.compile(rf"^(\s*{re.escape(target.version_ref)}\s*=\s*)[\"'][^\"']+[\"']", re.MULTILINE)
-                if pat.search(content):
-                    updated = pat.sub(rf'\g<1>"{new_ver}"', content, count=1)
-                    target.file_path.write_text(updated, encoding="utf-8")
-                    return True
-
-            pat_inline = re.compile(
-                rf'(group\s*=\s*["\']{re.escape(target.group)}["\'].*?version\s*=\s*)["\'][^"\']+["\']',
-                re.DOTALL,
-            )
-            if pat_inline.search(content):
-                updated = pat_inline.sub(rf'\g<1>"{new_ver}"', content, count=1)
-                target.file_path.write_text(updated, encoding="utf-8")
-                return True
-
-            pat_str = re.compile(
-                rf'(["\']{re.escape(target.group)}:{re.escape(target.artifact)}:)[\d.a-zA-Z\-_]+(["\'])'
-            )
-            if pat_str.search(content):
-                updated = pat_str.sub(rf"\g<1>{new_ver}\g<2>", content, count=1)
-                target.file_path.write_text(updated, encoding="utf-8")
-                return True
-
-        if target.file_path.name.endswith(".gradle") or target.file_path.name.endswith(".gradle.kts"):
-            pat = re.compile(
-                rf'([\'"]{re.escape(target.group)}:{re.escape(target.artifact)}:)[\d.a-zA-Z\-_]+([\'"])'
-            )
-            if pat.search(content):
-                updated = pat.sub(rf"\g<1>{new_ver}\g<2>", content, count=1)
-                target.file_path.write_text(updated, encoding="utf-8")
-                return True
-
-        return False
+class ConstraintGenerator:
 
     @staticmethod
     def generate_resolution_strategy(results: List[AnalysisResult], min_sdk: int) -> Tuple[str, str]:
@@ -712,12 +665,6 @@ def main():
         type=int,
         default=None,
         help="Target minSdk (e.g. 21). Defaults to project minSdk or 21.",
-    )
-    parser.add_argument(
-        "--lock",
-        "--fix",
-        action="store_true",
-        help="Automatically pin versions in libs.versions.toml or build.gradle(.kts).",
     )
     parser.add_argument(
         "--constraints",
@@ -862,6 +809,9 @@ def main():
                     "latest_overall_min_sdk": r.latest_overall_min_sdk,
                     "max_compatible_version": r.max_compatible_version,
                     "max_compatible_min_sdk": r.max_compatible_min_sdk,
+                    "version_ref": r.target.version_ref,
+                    "file_path": str(r.target.file_path) if r.target.file_path else None,
+                    "line_number": r.target.line_number,
                     "is_jar_only": r.is_jar_only,
                     "status": r.status,
                     "message": r.message,
@@ -874,18 +824,8 @@ def main():
 
     print_table(results, target_min_sdk)
 
-    if args.lock:
-        locked_count = 0
-        for r in results:
-            if r.status in ("NEEDS_PIN", "UPGRADE_AVAILABLE") and r.max_compatible_version:
-                ok = ProjectLocker.lock_dependency(r)
-                if ok:
-                    locked_count += 1
-                    print(f"Locked {r.target.group}:{r.target.artifact} to {r.max_compatible_version}")
-        print(f"\nSuccessfully locked {locked_count} dependency versions.")
-
     if args.constraints or any(r.status == "NEEDS_PIN" for r in results):
-        groovy_snip, kotlin_snip = ProjectLocker.generate_resolution_strategy(results, target_min_sdk)
+        groovy_snip, kotlin_snip = ConstraintGenerator.generate_resolution_strategy(results, target_min_sdk)
         if groovy_snip:
             print("\n" + "=" * 60)
             print("RECOMMENDED GRADLE RESOLUTION STRATEGY (Pins transitive deps)")
