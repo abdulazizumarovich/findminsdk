@@ -152,10 +152,11 @@ inline-dep = { group = "androidx.activity", name = "activity", version = "1.13.0
             message="Pin to 1.17.0",
         )
         groovy, kotlin = ConstraintGenerator.generate_resolution_strategy([res], 21)
-        self.assertIn("details.requested.group == 'androidx.core'", groovy)
-        self.assertIn("details.useVersion '1.17.0'", groovy)
-        self.assertIn('requested.group == "androidx.core"', kotlin)
-        self.assertIn('useVersion("1.17.0")', kotlin)
+        self.assertIn("resolutionStrategy.force(", groovy)
+        self.assertIn("'androidx.core:core:1.17.0'", groovy)
+        self.assertIn("resolutionStrategy {", kotlin)
+        self.assertIn("force(", kotlin)
+        self.assertIn('"androidx.core:core:1.17.0"', kotlin)
 
 
 class TestDiskCache(unittest.TestCase):

@@ -96,13 +96,13 @@ python3 /path/to/findminsdk.py -m 21 --constraints
 
 #### Paste into root `build.gradle.kts` (Kotlin DSL):
 ```kotlin
-allprojects {
+subprojects {
     configurations.all {
-        resolutionStrategy.eachDependency {
-            if (requested.group == "androidx.core" && requested.name == "core") {
-                useVersion("1.17.0")
-                because("minSdk 21 compatibility")
-            }
+        resolutionStrategy {
+            force(
+                "androidx.core:core:1.17.0",
+                "androidx.appcompat:appcompat:1.7.1"
+            )
         }
     }
 }
@@ -110,14 +110,12 @@ allprojects {
 
 #### Paste into root `build.gradle` (Groovy DSL):
 ```groovy
-allprojects {
+subprojects {
     configurations.all {
-        resolutionStrategy.eachDependency { DependencyResolveDetails details ->
-            if (details.requested.group == 'androidx.core' && details.requested.name == 'core') {
-                details.useVersion '1.17.0'
-                details.because 'minSdk 21 compatibility'
-            }
-        }
+        resolutionStrategy.force(
+            'androidx.core:core:1.17.0',
+            'androidx.appcompat:appcompat:1.7.1'
+        )
     }
 }
 ```

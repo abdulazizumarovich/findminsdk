@@ -581,35 +581,40 @@ class ConstraintGenerator:
         if not pins:
             return "", ""
 
+        # Also include core:core if core-ktx is present to catch pure transitive references
+        core_ktx_pin = next(
+            (p for p in pins if p.target.group == "androidx.core" and p.target.artifact == "core-ktx"),
+            None,
+        )
+        has_core = any(p.target.group == "androidx.core" and p.target.artifact == "core" for p in pins)
+        
+        coordinates = [f"{p.target.group}:{p.target.artifact}:{p.max_compatible_version}" for p in pins]
+        if core_ktx_pin and not has_core and core_ktx_pin.max_compatible_version:
+            coordinates.append(f"androidx.core:core:{core_ktx_pin.max_compatible_version}")
+        coordinates.sort()
+
         groovy_lines = [
             "// Paste inside root build.gradle (Groovy DSL)",
-            "allprojects {",
+            "subprojects {",
             "    configurations.all {",
-            "        resolutionStrategy.eachDependency { DependencyResolveDetails details ->",
+            "        resolutionStrategy.force(",
         ]
-        for p in pins:
-            groovy_lines.append(
-                f"            if (details.requested.group == '{p.target.group}' && details.requested.name == '{p.target.artifact}') {{"
-            )
-            groovy_lines.append(f"                details.useVersion '{p.max_compatible_version}'")
-            groovy_lines.append(f"                details.because 'minSdk {min_sdk} compatibility'")
-            groovy_lines.append("            }")
-        groovy_lines.extend(["        }", "    }", "}"])
+        for i, c in enumerate(coordinates):
+            comma = "," if i < len(coordinates) - 1 else ""
+            groovy_lines.append(f"            '{c}'{comma}")
+        groovy_lines.extend(["        )", "    }", "}"])
 
         kotlin_lines = [
             "// Paste inside root build.gradle.kts (Kotlin DSL)",
-            "allprojects {",
+            "subprojects {",
             "    configurations.all {",
-            "        resolutionStrategy.eachDependency {",
+            "        resolutionStrategy {",
+            "            force(",
         ]
-        for p in pins:
-            kotlin_lines.append(
-                f'            if (requested.group == "{p.target.group}" && requested.name == "{p.target.artifact}") {{'
-            )
-            kotlin_lines.append(f'                useVersion("{p.max_compatible_version}")')
-            kotlin_lines.append(f'                because("minSdk {min_sdk} compatibility")')
-            kotlin_lines.append("            }")
-        kotlin_lines.extend(["        }", "    }", "}"])
+        for i, c in enumerate(coordinates):
+            comma = "," if i < len(coordinates) - 1 else ""
+            kotlin_lines.append(f'                "{c}"{comma}')
+        kotlin_lines.extend(["            )", "        }", "    }", "}"])
 
         return "\n".join(groovy_lines), "\n".join(kotlin_lines)
 
